@@ -1,4 +1,4 @@
-# clien-serve
+# clien-server
 
 this is a simple example of client and server sending data to each other
 
