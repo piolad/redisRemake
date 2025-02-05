@@ -1,6 +1,8 @@
 # Variables
-CC = gcc
+CC     = gcc
+CXX    = g++
 CFLAGS = -Wall -g -Wextra -O2
+CXXFLAGS = -Wall -g -Wextra -O2
 LDFLAGS = -lm
 
 all: client server
@@ -14,8 +16,8 @@ server: server.o
 client.o: client.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-server.o: server.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+server.o: server.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 clean:
 	rm -f client server *.o
