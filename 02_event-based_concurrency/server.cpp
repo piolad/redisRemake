@@ -78,13 +78,34 @@ int main(){
                 die("poll()");
             }
 
-            
-            
+            if (pollfds[0].revents) {
+
+                // if(Conn* conn = handle_accept(fd)){
+                    
+                    if(conns.size() < (size_t) conn->fd){
+                        conns.resize(conn->fd + 1);
+                    }
+                    conns[conn->fd] = conn;
+                // }
+            }
         }
+
+        for(size_t i = 1; i < pollfds.size(); i++){
+            uint32_t revents = pollfds[i].revents;
+            Conn* conn = conns[pollfds[i].fd];
+
+            if((revents & POLLERR) || conn->want_close){
+                (void) close(conn->fd);
+                conns[conn->fd] = nullptr;
+                delete conn;
+            }
+        }
+            
     }
 
 
 }
+
 
 void die(const char* msg){
     perror(msg);
