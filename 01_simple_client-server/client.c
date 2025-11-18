@@ -6,7 +6,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-static void do_something(int);
 void die(const char*);
 
 int main(){
@@ -18,14 +17,14 @@ int main(){
 
     char msg[128];
     char rbuf[64];
-    
+
     while (true)
     {
         fd = socket(AF_INET, SOCK_STREAM, 0);
         if (fd < 0) {
             die("socket()");
         }
-        
+
         rv = connect(fd, (const struct sockaddr*) &addr, sizeof(addr));
         if (rv) {
             die("connect()");
@@ -33,9 +32,11 @@ int main(){
 
         printf("Enter a message: ");
         fgets(msg, sizeof(msg), stdin);
-        if (msg[strlen(msg) - 1] == '\n') {
-            msg[strlen(msg) - 1] = '\0';
-        }
+        
+        size_t len = strlen(msg);
+        while ( len > 0 && (msg[strlen(msg) - 1] == '\n' || msg[strlen(msg) - 1] == '\r' ) )
+            msg[--len] ='\0';
+            
         write(fd, msg, strlen(msg));
 
         ssize_t n = read(fd, rbuf, sizeof(rbuf) - 1);
