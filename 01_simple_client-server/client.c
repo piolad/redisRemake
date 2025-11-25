@@ -12,8 +12,8 @@ int main(){
     int fd, rv;
     struct sockaddr_in addr = {};
     addr.sin_family = AF_INET;
-    addr.sin_port = ntohs(1234);
-    addr.sin_addr.s_addr = ntohl(INADDR_LOOPBACK);  // 127.0.0.1
+    addr.sin_port = htons(1234); // convert endianess
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);  // 127.0.0.1; convert endian    ess
 
     char msg[128];
     char rbuf[64];
@@ -38,7 +38,8 @@ int main(){
             msg[--len] ='\0';
             
         write(fd, msg, strlen(msg));
-
+        
+        // blocks untill at least 1 byte is available or the connection is closed
         ssize_t n = read(fd, rbuf, sizeof(rbuf) - 1);
         if (n < 0) {
             die("read()");
