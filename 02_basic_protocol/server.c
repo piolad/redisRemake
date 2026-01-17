@@ -79,14 +79,14 @@ static int32_t handle_one_request(int conn_fd){
     err = read_n(conn_fd, buf+4, len);
 
     
-    printf("Received: \"%s\" ", buf+4);
+    printf("Received: \"%.*s\" ", (int)len, buf+4);
     printf("[");
     for (ssize_t i = 0; i < 4+len; i++) {
         printf(" %02x", buf[i]);
     }
     printf("]\n");
     char wbuf[64];
-    int wlen = snprintf(wbuf+4, sizeof(wbuf)-4, "ok. Received %u Bytes", len);
+    int wlen = snprintf(wbuf+4, sizeof(wbuf)-4, "ok. msg_len=%u", len);
     if(wlen < 0) return -1;
 
     uint32_t wlen_transmit = (uint32_t) wlen;

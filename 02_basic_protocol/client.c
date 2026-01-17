@@ -7,23 +7,51 @@
 #include <string.h>
 #include <assert.h>
 
-void die(const char*);
 
+#define MAX_MSG_SIZE 4096
+
+void die(const char*);
+static void send_msg(char* msg);
+
+static int32_t read_server_response(int conn_fd);
 static int32_t read_n(int fd, char* buf, size_t n);
 static int32_t write_n(int fd, char* buf, size_t n);
 
+int fd, rv;
+struct sockaddr_in addr = {};
+
 int main(){
-    int fd, rv;
-    struct sockaddr_in addr = {};
+    
+
     addr.sin_family = AF_INET;
     addr.sin_port = htons(1234); // convert endianess
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);  // 127.0.0.1; convert endian    ess
-
+    
     char msg[128];
     char rbuf[64];
 
+    // simple tests of sending a few messages instantly
+    send_msg("Hello, this is msg 1.");
+    send_msg("Msg 2 here");
+    send_msg("Final.");
+
+
     while (true)
     {
+        printf("Enter a message: ");
+        fgets(msg, sizeof(msg), stdin);
+        send_msg(msg);
+    }
+
+    return 0;
+}
+
+void die(const char* msg){
+    perror(msg);
+    exit(1);
+}
+
+static void send_msg(char* msg){
         fd = socket(AF_INET, SOCK_STREAM, 0);
         if (fd < 0) {
             die("socket()");
@@ -33,9 +61,6 @@ int main(){
         if (rv) {
             die("connect()");
         }
-
-        printf("Enter a message: ");
-        fgets(msg, sizeof(msg), stdin);
         
         size_t len = strlen(msg);
         while ( len > 0 && (msg[strlen(msg) - 1] == '\n' || msg[strlen(msg) - 1] == '\r' ) )
@@ -53,22 +78,10 @@ int main(){
 
         write_n(fd, wbuf, 4+wlen_transmit);
         
-        // blocks untill at least 1 byte is available or the connection is closed
-        ssize_t n = read(fd, rbuf, sizeof(rbuf) - 1);
-        if (n < 0) {
-            die("read()");
-        }
-        printf("server says: %s\n\n", rbuf);
+        read_server_response(fd);
+        puts("");
 
         close(fd);
-    }
-
-    return 0;
-}
-
-void die(const char* msg){
-    perror(msg);
-    exit(1);
 }
 
 // read n bytes by iterating until done
@@ -98,4 +111,27 @@ static int32_t write_n(int fd, char* buf, size_t n){
         buf+=rv;
     }
     return 0;
+}
+
+static int32_t read_server_response(int conn_fd){
+    char buf[4 + MAX_MSG_SIZE];
+
+    
+    int32_t err = read_n(conn_fd, buf, 4);
+    if (err) { die( "EOF or read() error"); return err; }
+
+    uint32_t len = 0;
+    memcpy(&len, buf, 4);
+    if (len > MAX_MSG_SIZE) {die("message too long" ); return -1;}
+
+    err = read_n(conn_fd, buf+4, len);
+
+    
+    printf("Srv's answer: \"%.*s\"\n", (int)len, buf+4);
+    printf("[");
+    for (ssize_t i = 0; i < 4+len; i++) {
+        printf(" %02x", buf[i]);
+    }
+    printf("]\n");
+    return len;
 }
