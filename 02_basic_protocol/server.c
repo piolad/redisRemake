@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <string.h>
 
 #define MAX_MSG_SIZE 4096
 
-static void handle(int);
 void die(const char*);
 static int32_t handle_one_request(int conn_fd);
 static int32_t read_n(int fd, char* buf, size_t n);
@@ -97,28 +97,13 @@ static int32_t handle_one_request(int conn_fd){
 
 }
 
-static void handle(int fd){
-    
-
-    char buf[1024];
-    ssize_t n = read(fd, buf, sizeof(buf) -1);
-    if(n < 0){
-        die("read()");
-    }
-    buf[n] = '\0';
-    printf("Received: %s\n", buf);
-
-    char wbuf[] = "Hello, client!";
-    write(fd, wbuf, sizeof(wbuf));
-}
-
 
 // read n bytes by iterating until done
 static int32_t read_n(int fd, char* buf, size_t n){
     while (n >0){
         ssize_t rv = read(fd, buf, n);
         if (rv <= 0) return -1; // error
-        assert((ssize_t) rv <= n);
+        assert((size_t) rv <= n);
  
         n -= (size_t) rv;
         
@@ -133,7 +118,7 @@ static int32_t write_n(int fd, char* buf, size_t n){
     while (n >0){
         ssize_t rv = write(fd, buf, n);
         if (rv <= 0) return -1; // error
-        assert((ssize_t) rv <= n);
+        assert((size_t) rv <= n);
  
         n -= (size_t) rv;
         

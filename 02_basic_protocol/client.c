@@ -28,7 +28,6 @@ int main(){
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);  // 127.0.0.1; convert endian    ess
     
     char msg[128];
-    char rbuf[64];
 
     // simple tests of sending a few messages instantly
     send_msg("Hello, this is msg 1.");
@@ -89,7 +88,7 @@ static int32_t read_n(int fd, char* buf, size_t n){
     while (n >0){
         ssize_t rv = read(fd, buf, n);
         if (rv <= 0) return -1; // error
-        assert((ssize_t) rv <= n);
+        assert((size_t) rv <= n);
  
         n -= (size_t) rv;
         
@@ -104,7 +103,7 @@ static int32_t write_n(int fd, char* buf, size_t n){
     while (n >0){
         ssize_t rv = write(fd, buf, n);
         if (rv <= 0) return -1; // error
-        assert((ssize_t) rv <= n);
+        assert((size_t) rv <= n);
  
         n -= (size_t) rv;
         
