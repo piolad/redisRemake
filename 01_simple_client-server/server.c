@@ -17,8 +17,11 @@ int main(){
     }
 
     // Set the socket to reuse the address
+    // to allow to quickly rebind to the address
+    // useful for quick restarts of the app
     int opt = 1;
-    // SOL_SOCKET = socket level, SO_REUSEADDR = reuse address
+
+    // SOL_SOCKET = socket level option, SO_REUSEADDR = reuse address (specific option)
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     struct sockaddr_in addr;
@@ -39,7 +42,7 @@ int main(){
         struct sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
         int confd = accept(fd, (struct sockaddr*)&client_addr, &client_addr_len);
-        if(confd, 0){
+        if(confd < 0){
             continue;
         }
 
@@ -58,7 +61,7 @@ void die(const char* msg){
 
 static void handle(int fd){
     char buf[1024];
-    ssize_t n = read(fd, buf, sizeof(buf));
+    ssize_t n = read(fd, buf, sizeof(buf) -1);
     if(n < 0){
         die("read()");
     }
