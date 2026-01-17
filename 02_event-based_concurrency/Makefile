@@ -11,7 +11,7 @@ client: client.o
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 server: server.o
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+	$(CXX) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 client.o: client.c
 	$(CC) $(CFLAGS) -c -o $@ $<
