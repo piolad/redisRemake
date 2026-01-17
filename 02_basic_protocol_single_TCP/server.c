@@ -118,7 +118,7 @@ void setup(){
     fd = socket(AF_INET, SOCK_STREAM, 0);
     if(fd == -1){
         printf("Error creating socket\n");
-        return 1;
+        exit(-1);
     }
 
     // Set the socket to reuse the address
