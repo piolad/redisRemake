@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <errno.h>
 
-#define MAX_MSG_SIZE 4096
+#define MAX_MSG_SIZE 32 << 20
 
 void die(const char *);
 static void send_msg(char *msg);
@@ -29,8 +29,16 @@ int main()
 
     char msg[128];
 
-    // simple tests of sending a few messages instantly
+    // simple tests of sending a few messages at start
     send_msg("Hello, this is msg 1.");
+
+    // very large message
+    char *big = malloc(MAX_MSG_SIZE + 1);
+    memset(big, 'z', MAX_MSG_SIZE);
+    big[MAX_MSG_SIZE] = '\0';
+
+    send_msg(big);
+    
     send_msg("Msg 2 here");
     send_msg("Final.");
 
@@ -49,55 +57,60 @@ int main()
 
 static void send_msg(char *msg)
 {
+    size_t len = strlen(msg);
+    if (len > MAX_MSG_SIZE) die("client: message too long");
 
-    char wbuf[128 + 4];
+    char *wbuf = malloc(4 + len);
+    if (!wbuf) die("malloc");
 
-    int32_t sn_len = snprintf(wbuf + 4, sizeof(wbuf) - 4, "%s", msg);
-    if (sn_len < 0)
-    {
-        die("snprintf()");
+    memcpy(wbuf, &len, 4);
+    memcpy(wbuf + 4, msg, len);
+
+    if (write_n(fd, wbuf, 4 + len) != 0) {
+        free(wbuf);
+        die("write_n");
     }
-
-    uint32_t wlen_transmit = (uint32_t)sn_len;
-
-    memcpy(wbuf, &wlen_transmit, 4);
-
-    write_n(fd, wbuf, 4 + wlen_transmit);
+    free(wbuf);
 
     read_server_response(fd);
     puts("");
 }
 
+
+
 static int32_t read_server_response(int conn_fd)
 {
-    char buf[4 + MAX_MSG_SIZE];
-
-    int32_t err = read_n(conn_fd, buf, 4);
-    if (err)
-    {
-        die("EOF or read() error");
-        return err;
-    }
-
     uint32_t len = 0;
-    memcpy(&len, buf, 4);
-    if (len > MAX_MSG_SIZE)
-    {
+
+    if (read_n(conn_fd, (char*)&len, 4) != 0) {
+        die("EOF or read() error");
+    }
+
+    if (len > MAX_MSG_SIZE) {
         die("message too long");
-        return -1;
     }
 
-    err = read_n(conn_fd, buf + 4, len);
+    char *buf = malloc(len ? len : 1);
+    if (!buf) die("malloc");
 
-    printf("Srv's answer: \"%.*s\"\n", (int)len, buf + 4);
+    if (len > 0 && read_n(conn_fd, buf, len) != 0) {
+        free(buf);
+        die("EOF or read() error");
+    }
+
+    printf("Srv's answer (after first 4 bytes): \"%.*s\"\n", (int)len, buf);
+
     printf("[");
-    for (ssize_t i = 0; i < 4 + len; i++)
-    {
-        printf(" %02x", buf[i]);
-    }
+    unsigned char hdr[4];
+    memcpy(hdr, &len, 4);
+    for (int i = 0; i < 4; i++) printf(" %02x", hdr[i]);
+    for (uint32_t i = 0; i < len; i++) printf(" %02x", (unsigned char)buf[i]);
     printf("]\n");
-    return len;
+
+    free(buf);
+    return (int32_t)len;
 }
+
 
 // read n bytes by iterating until done
 static int32_t read_n(int fd, char *buf, size_t n)

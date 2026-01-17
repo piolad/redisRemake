@@ -8,10 +8,11 @@
 #include <poll.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <string>
 #include <string.h>
 #include <assert.h>
 
-#define MAX_MSG_SIZE 4096
+#define MAX_MSG_SIZE 32 << 20
 
 struct Conn
 {
@@ -147,7 +148,7 @@ static void handle_read(Conn* conn){
     }
 
     buf_append(conn->read_buf, buf, (size_t) rv);
-    try_one_request(conn);
+    while(try_one_request(conn)){}
 
     if(conn->write_buf.size() > 0){
         // we have a response to return
@@ -209,9 +210,11 @@ static bool try_one_request(Conn *conn){
     const uint8_t* request = &conn->read_buf[4];
 
 
-    // write the response: echo for now
-    buf_append(conn->write_buf, (const uint8_t*) &len, 4);
-    buf_append(conn->write_buf, request, len);
+    // write the response
+    std::string payload = "ok. msg_len=" + std::to_string(len);
+    uint32_t payload_len = payload.size();
+    buf_append(conn->write_buf, (const uint8_t*) &payload_len, 4);
+    buf_append(conn->write_buf, (const uint8_t*) payload.data(), payload_len);
 
     buf_consume(conn->read_buf, 4+len);
 
