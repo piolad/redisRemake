@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
+#include <errno.h>
 
 #define MAX_MSG_SIZE 4096
 
@@ -14,35 +15,10 @@ static int32_t handle_one_request(int conn_fd);
 static int32_t read_n(int fd, char* buf, size_t n);
 static int32_t write_n(int fd, char* buf, size_t n);
 
+int fd = -1;
+int rv;
 int main(){
-    // AF_INET = IPv4, SOCK_STREAM = TCP
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
-    if(fd == -1){
-        printf("Error creating socket\n");
-        return 1;
-    }
-
-    // Set the socket to reuse the address
-    // to allow to quickly rebind to the address
-    // useful for quick restarts of the app
-    int opt = 1;
-
-    // SOL_SOCKET = socket level option, SO_REUSEADDR = reuse address (specific option)
-    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(1234);
-    addr.sin_addr.s_addr = htonl(0);
-    int rv = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
-    if(rv){
-        die("bind()");
-    }
-
-    rv = listen(fd, SOMAXCONN);
-    if(rv){
-        die("listen()");
-    }
+    setup();
 
     while(true){
         struct sockaddr_in client_addr;
@@ -53,7 +29,13 @@ int main(){
         }
 
         // handle(confd);
-        handle_one_request(confd);
+        while (true)
+        {
+            int32_t rc = handle_one_request(confd);
+            if (rc != 0) break;
+        }
+        
+        
         close(confd);
     }
 
@@ -70,7 +52,8 @@ static int32_t handle_one_request(int conn_fd){
 
     
     int32_t err = read_n(conn_fd, buf, 4);
-    if (err) { die( "EOF or read() error"); return err; }
+    if (err == 1) return 1;
+     if (err == -1) { die( "EOF or read() error"); return err; }
 
     uint32_t len = 0;
     memcpy(&len, buf, 4);
@@ -101,8 +84,10 @@ static int32_t handle_one_request(int conn_fd){
 // read n bytes by iterating until done
 static int32_t read_n(int fd, char* buf, size_t n){
     while (n >0){
+        errno = 0;
         ssize_t rv = read(fd, buf, n);
-        if (rv <= 0) return -1; // error
+        if (rv == 0) return 1; 
+        if (rv < 0) {if (errno == EINTR) continue; return -1;}  // error
         assert((size_t) rv <= n);
  
         n -= (size_t) rv;
@@ -127,3 +112,34 @@ static int32_t write_n(int fd, char* buf, size_t n){
     return 0;
 }
 
+void setup(){
+
+    // AF_INET = IPv4, SOCK_STREAM = TCP
+    fd = socket(AF_INET, SOCK_STREAM, 0);
+    if(fd == -1){
+        printf("Error creating socket\n");
+        return 1;
+    }
+
+    // Set the socket to reuse the address
+    // to allow to quickly rebind to the address
+    // useful for quick restarts of the app
+    int opt = 1;
+
+    // SOL_SOCKET = socket level option, SO_REUSEADDR = reuse address (specific option)
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(1234);
+    addr.sin_addr.s_addr = htonl(0);
+    rv = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
+    if(rv){
+        die("bind()");
+    }
+
+    rv = listen(fd, SOMAXCONN);
+    if(rv){
+        die("listen()");
+    }
+}

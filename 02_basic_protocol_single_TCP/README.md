@@ -1,6 +1,8 @@
 # basic protocol
 
-This implemntation uses prefixing the message with its length in bytes
+This implemntation uses prefixing the message with its length in bytes.
+- We move from sending raw strings to sending a length-prefixed message.
+- We reuse a single TCP connection for multiple messages.
 
 ```bash
 ./server
