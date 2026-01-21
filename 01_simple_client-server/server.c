@@ -69,6 +69,6 @@ static void handle(int fd){
     printf("Received: %s\n", buf);
 
     char wbuf[] = "Hello, client!";
-    write(fd, wbuf, sizeof(wbuf));
+    write(fd, wbuf, sizeof(wbuf)-1);
 }
 

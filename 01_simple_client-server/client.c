@@ -44,6 +44,7 @@ int main(){
         if (n < 0) {
             die("read()");
         }
+        rbuf[n] = '\0';
         printf("server says: %s\n\n", rbuf);
 
         close(fd);
