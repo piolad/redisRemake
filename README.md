@@ -5,30 +5,6 @@ This project is a [Redis](https://redis.io/)-inspired K/V store - an in-memory d
 ## Project Goal
 
 The primary goal of this project is to understand how a high-performance server with non-blocking IO works.
-## Build & Run
-Requirements:
-- Linux
-- A C/C++ compiler (`gcc`, `g++`)
-- `make` build system
-
-1. Clone and open the repository:
-   ```bash
-   git clone 
-   cd redisRemake
-   ```
-2. Navigate to the desired stage, e.g., `01_simple_client-server` and build it:
-   ```bash
-   cd 01_simple_client-server
-   make
-   ```
-3. Run the server in one terminal:
-    ```bash
-    ./server
-    ```
-4. In another terminal, run the client:
-    ```bash
-    ./client
-    ``` 
 
 ## Project Structure
 
@@ -53,6 +29,31 @@ The server is rewritten in C++ to be fully concurrent without using threads. It 
 
 **Concepts:** Event-driven architecture, non-blocking I/O, readiness notification API (with `poll()`).
 
+## Build & Run
+Requirements:
+- Linux
+- A C/C++ compiler (`gcc`, `g++`)
+- `make` build system
+
+1. Clone and open the repository:
+   ```bash
+   git clone 
+   cd redisRemake
+   ```
+2. Navigate to the desired stage, e.g., `01_simple_client-server` and build it:
+   ```bash
+   cd 01_simple_client-server
+   make
+   ```
+3. Run the server in one terminal:
+    ```bash
+    ./server
+    ```
+4. In another terminal, run the client:
+    ```bash
+    ./client
+    ``` 
+    
 ## Useful resources
 - [Beej's Guide to Network Programming](https://beej.us/guide/bgnet/)
 - [The Linux Programming Interface](https://man7.org/tlpi/)
