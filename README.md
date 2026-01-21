@@ -1,10 +1,34 @@
 # Redis Remake in C/C++
 
-This project is a recreation of [Redis](https://redis.io/) - a in-memory database, implemented in C/C++. This repo documents my learning journey of low-level systems programming and network server development. It is structured in stages, and each stage is an extension of the previous one.
+This project is a [Redis](https://redis.io/)-inspired K/V store - an in-memory database, implemented in C/C++. This repo documents my learning journey of low-level systems programming and network server development. It is structured in stages, and each stage is an extension of the previous one.
 
 ## Project Goal
 
 The primary goal of this project is to understand how a high-performance server with non-blocking IO works.
+## Build & Run
+Requirements:
+- Linux
+- A C/C++ compiler (`gcc`, `g++`)
+- `make` build system
+
+1. Clone and open the repository:
+   ```bash
+   git clone 
+   cd redisRemake
+   ```
+2. Navigate to the desired stage, e.g., `01_simple_client-server` and build it:
+   ```bash
+   cd 01_simple_client-server
+   make
+   ```
+3. Run the server in one terminal:
+    ```bash
+    ./server
+    ```
+4. In another terminal, run the client:
+    ```bash
+    ./client
+    ``` 
 
 ## Project Structure
 
