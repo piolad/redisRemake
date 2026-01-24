@@ -1,4 +1,4 @@
-# event-based concurrency
+# Stage 2: Event-Based concurrency
 
 The simplest type of concurrency is multi-threading. Redis, however, like many other high-performance systems do not use threads for concurrency.
 
@@ -7,17 +7,15 @@ That is because:
 - A lot of overhead is needed for creating a new thread. Especially painful when the connections are short-lived.
 
 
-The linux API allows for non-blocking behavior by setting a flag.
+The linux API allows for non-blocking behavior by setting the `O_NONBLOCK` flag.
 
 ```c
-static void fd_set_nonblock(int fd) {
-    int flags = fcntl(fd, F_GETFL, 0);  // get the flags
-    flags |= O_NONBLOCK;                // modify the flags
-    fcntl(fd, F_SETFL, flags);          // set the flags
-}
+int flags = fcntl(fd, F_GETFL, 0);  // get the flags
+flags |= O_NONBLOCK;                // modify the flags
+fcntl(fd, F_SETFL, flags);          // set the flags
 ```
 
-## actual meaning of read and write syscalls
+## `read()` and `write()` syscalls behavior
 They do not interact with the network directly!
 Instead they only operate on a kernel's buffer. 
 

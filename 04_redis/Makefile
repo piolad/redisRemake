@@ -1,14 +1,10 @@
-# Compiler
 CXX = g++
 
-# Compiler flags
 CXXFLAGS = -Wall -Wextra -std=c++11
 
-# Source files
 CLIENT_SRC = src/client/main.cpp
 SERVER_SRC = src/server/main.cpp
 
-# Executables
 CLIENT_EXEC = client
 SERVER_EXEC = server
 
