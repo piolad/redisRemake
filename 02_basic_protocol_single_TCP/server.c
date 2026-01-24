@@ -14,11 +14,10 @@ void die(const char*);
 static int32_t handle_one_request(int conn_fd);
 static int32_t read_n(int fd, char* buf, size_t n);
 static int32_t write_n(int fd, char* buf, size_t n);
+static int setup(void);
 
-int fd = -1;
-int rv;
 int main(){
-    setup();
+    int fd = setup();
 
     while(true){
         struct sockaddr_in client_addr;
@@ -28,7 +27,6 @@ int main(){
             continue;
         }
 
-        // handle(confd);
         while (true)
         {
             int32_t rc = handle_one_request(confd);
@@ -39,7 +37,7 @@ int main(){
         close(confd);
     }
 
-
+    return 0;
 }
 
 void die(const char* msg){
@@ -50,27 +48,35 @@ void die(const char* msg){
 static int32_t handle_one_request(int conn_fd){
     char buf[4 + MAX_MSG_SIZE];
 
-    
     int32_t err = read_n(conn_fd, buf, 4);
-    if (err == 1) return 1;
-     if (err == -1) { die( "EOF or read() error"); return err; }
+    if (err) {
+        return err; // EOF or error
+    }
 
     uint32_t len = 0;
     memcpy(&len, buf, 4);
-    if (len > MAX_MSG_SIZE) {die("message too long" ); return -1;}
+    if (len > MAX_MSG_SIZE) {
+        fprintf(stderr, "Message too long: %u\n", len);
+        return -1;
+    }
 
     err = read_n(conn_fd, buf+4, len);
+    if (err) {
+        return err; // EOF or error
+    }
 
-    
     printf("Received: \"%.*s\" ", (int)len, buf+4);
     printf("[");
     for (ssize_t i = 0; i < 4+len; i++) {
-        printf(" %02x", buf[i]);
+        printf(" %02x", (unsigned char)buf[i]);
     }
     printf("]\n");
     char wbuf[64];
     int wlen = snprintf(wbuf+4, sizeof(wbuf)-4, "ok. msg_len=%u", len);
-    if(wlen < 0) return -1;
+    if(wlen < 0) {
+        perror("snprintf");
+        return -1;
+    }
 
     uint32_t wlen_transmit = (uint32_t) wlen;
 
@@ -102,7 +108,12 @@ static int32_t read_n(int fd, char* buf, size_t n){
 static int32_t write_n(int fd, char* buf, size_t n){
     while (n >0){
         ssize_t rv = write(fd, buf, n);
-        if (rv <= 0) return -1; // error
+        if (rv < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return -1; // error
+        }
         assert((size_t) rv <= n);
  
         n -= (size_t) rv;
@@ -112,28 +123,20 @@ static int32_t write_n(int fd, char* buf, size_t n){
     return 0;
 }
 
-void setup(){
-
-    // AF_INET = IPv4, SOCK_STREAM = TCP
-    fd = socket(AF_INET, SOCK_STREAM, 0);
+static int setup(void) {
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
     if(fd == -1){
-        printf("Error creating socket\n");
-        exit(-1);
+        die("socket()");
     }
 
-    // Set the socket to reuse the address
-    // to allow to quickly rebind to the address
-    // useful for quick restarts of the app
     int opt = 1;
-
-    // SOL_SOCKET = socket level option, SO_REUSEADDR = reuse address (specific option)
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(1234);
     addr.sin_addr.s_addr = htonl(0);
-    rv = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
+    int rv = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
     if(rv){
         die("bind()");
     }
@@ -142,4 +145,6 @@ void setup(){
     if(rv){
         die("listen()");
     }
+
+    return fd;
 }

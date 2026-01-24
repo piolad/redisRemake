@@ -11,43 +11,57 @@
 
 #define MAX_MSG_SIZE 4096
 
-void die(const char *);
-static void send_msg(char *msg);
+static int g_fd = -1;
+
+static int32_t send_msg(int fd, char *msg);
 
 static int32_t read_server_response(int conn_fd);
 static int32_t read_n(int fd, char *buf, size_t n);
 static int32_t write_n(int fd, char *buf, size_t n);
-static void setup(void);
-
-int fd=-1;
-int rv;
-struct sockaddr_in addr = {};
+static int setup(void);
+static void cleanup(void);
 
 int main()
 {
-    setup();
+    int fd = setup();
+    g_fd = fd;
 
     char msg[128];
 
     // simple tests of sending a few messages instantly
-    send_msg("Hello, this is msg 1.");
-    send_msg("Msg 2 here");
-    send_msg("Final.");
+    if (send_msg(fd, "Hello, this is msg 1.") != 0) {
+        return 1;
+    }
+    if (send_msg(fd, "Msg 2 here") != 0) {
+        return 1;
+    }
+    if (send_msg(fd, "Final.") != 0) {
+        return 1;
+    }
 
     while (true)
     {
         printf("Enter a message: ");
-        fgets(msg, sizeof(msg), stdin);
+        if (fgets(msg, sizeof(msg), stdin) == NULL) {
+            break; // EOF from stdin
+        }
 
         size_t len = strlen(msg);
         while (len > 0 && (msg[len-1] == '\n' || msg[len-1] == '\r'))  msg[--len] = '\0';
-        send_msg(msg);
+        
+        if (strlen(msg) == 0) {
+            continue; // Ignore empty messages
+        }
+        
+        if (send_msg(fd, msg) != 0) {
+            break; // Exit loop on error
+        }
     }
 
     return 0;
 }
 
-static void send_msg(char *msg)
+static int32_t send_msg(int fd, char *msg)
 {
 
     char wbuf[128 + 4];
@@ -55,17 +69,24 @@ static void send_msg(char *msg)
     int32_t sn_len = snprintf(wbuf + 4, sizeof(wbuf) - 4, "%s", msg);
     if (sn_len < 0)
     {
-        die("snprintf()");
+        perror("snprintf");
+        return -1;
     }
 
     uint32_t wlen_transmit = (uint32_t)sn_len;
 
     memcpy(wbuf, &wlen_transmit, 4);
 
-    write_n(fd, wbuf, 4 + wlen_transmit);
+    if (write_n(fd, wbuf, 4 + wlen_transmit) != 0) {
+        perror("write_n");
+        return -1;
+    }
 
-    read_server_response(fd);
+    if (read_server_response(fd) != 0) {
+        return -1;
+    }
     puts("");
+    return 0;
 }
 
 static int32_t read_server_response(int conn_fd)
@@ -73,30 +94,41 @@ static int32_t read_server_response(int conn_fd)
     char buf[4 + MAX_MSG_SIZE];
 
     int32_t err = read_n(conn_fd, buf, 4);
-    if (err)
-    {
-        die("EOF or read() error");
-        return err;
+    if (err) {
+        if (err == 1) {
+            fprintf(stderr, "Got EOF while reading message length\n");
+        } else {
+            perror("read_n");
+        }
+        return -1;
     }
 
     uint32_t len = 0;
     memcpy(&len, buf, 4);
     if (len > MAX_MSG_SIZE)
     {
-        die("message too long");
+        fprintf(stderr, "Server response too long: %u\n", len);
         return -1;
     }
 
     err = read_n(conn_fd, buf + 4, len);
+    if (err) {
+        if (err == 1) {
+            fprintf(stderr, "Got EOF while reading message body\n");
+        } else {
+            perror("read_n");
+        }
+        return -1;
+    }
 
     printf("Srv's answer: \"%.*s\"\n", (int)len, buf + 4);
     printf("[");
     for (ssize_t i = 0; i < 4 + len; i++)
     {
-        printf(" %02x", buf[i]);
+        printf(" %02x", (unsigned char)buf[i]);
     }
     printf("]\n");
-    return len;
+    return 0;
 }
 
 // read n bytes by iterating until done
@@ -105,8 +137,15 @@ static int32_t read_n(int fd, char *buf, size_t n)
     while (n > 0)
     {
         ssize_t rv = read(fd, buf, n);
-        if (rv <= 0)
-            return -1; // error
+        if (rv == 0) {
+            return 1; // EOF
+        }
+        if (rv < 0) {
+            if (errno == EINTR) {
+                continue; // Interrupted by signal, retry
+            }
+            return -1; // Other error
+        }
         assert((size_t)rv <= n);
 
         n -= (size_t)rv;
@@ -122,8 +161,12 @@ static int32_t write_n(int fd, char *buf, size_t n)
     while (n > 0)
     {
         ssize_t rv = write(fd, buf, n);
-        if (rv <= 0)
-            return -1; // error
+        if (rv < 0) {
+            if (errno == EINTR) {
+                continue; // Interrupted by signal, retry
+            }
+            return -1; // Other error
+        }
         assert((size_t)rv <= n);
 
         n -= (size_t)rv;
@@ -133,16 +176,10 @@ static int32_t write_n(int fd, char *buf, size_t n)
     return 0;
 }
 
-void die(const char *msg)
-{
-    perror(msg);
-    exit(1);
-}
-
 static void cleanup(void) {
-    if (fd != -1) {
-        close(fd);
-        fd = -1;
+    if (g_fd != -1) {
+        close(g_fd);
+        g_fd = -1;
     }
 }
 
@@ -153,7 +190,7 @@ static void on_signal(int sig) {
     _exit(128 + sig);
 }
 
-void setup(){
+static int setup(void){
     atexit(cleanup);
 
     struct sigaction sa;
@@ -165,22 +202,22 @@ void setup(){
     sigaction(SIGTERM, &sa, NULL);
     signal(SIGPIPE, SIG_IGN);
 
-    memset(&addr, 0, sizeof(addr));
+    struct sockaddr_in addr = {};
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(1234);                   // convert endianess
-    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // 127.0.0.1; convert endian    ess
+    addr.sin_port = htons(1234);
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-    fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0)
-    {
-        die("socket()");
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) {
+        perror("socket()");
+        exit(1);
     }
 
-    rv = connect(fd, (const struct sockaddr *)&addr, sizeof(addr));
-    if (rv)
-    {
-        die("connect()");
+    if (connect(fd, (const struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        perror("connect()");
+        close(fd);
+        exit(1);
     }
 
-    
+    return fd;
 }
