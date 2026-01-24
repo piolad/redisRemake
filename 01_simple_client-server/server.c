@@ -19,6 +19,8 @@ int main(){
     // Set the socket to reuse the address
     // to allow to quickly rebind to the address
     // useful for quick restarts of the app
+    // good explamanation:
+    // https://stackoverflow.com/a/3233022
     int opt = 1;
 
     // SOL_SOCKET = socket level option, SO_REUSEADDR = reuse address (specific option)
