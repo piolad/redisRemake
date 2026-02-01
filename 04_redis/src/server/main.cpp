@@ -194,7 +194,7 @@ static bool try_one_request(Conn *conn){
         if(kv.count(args)){
             printf("->kv[%s]=%s\n",args.c_str(), kv[args].c_str());
             std::string r = kv[args];
-            payload = "OK" + r;
+            payload = "OK:" + r;
         }else{
             payload = "KO:notfound";
         }
@@ -214,7 +214,7 @@ static bool try_one_request(Conn *conn){
             payload = "OK";
         }
     }else if (command == "PING"){
-        
+        payload = "OK:PONG";
     }else if (command == "DEL"){
         if(kv.count(args)){
             kv.erase(args);
