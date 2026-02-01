@@ -1,11 +1,13 @@
 Features:
 
 Part 1:
-- [ ] Event-based concurrency
+- [x] Event-based concurrency
 - [ ] Timing and removing items after cache has expired
-- [ ] PING
+- [x] PING
 - [ ] INFO
-- [ ] Get, set, delete
+- [x] Get, set, delete
+- [ ] Split sending data over the wire into multiple strings with first byte being count of strings
+- [ ] implement Get all keys
 
 Part2:
 - [ ] persisatance
