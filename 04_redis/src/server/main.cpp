@@ -113,7 +113,9 @@ static Conn* handle_accept(int fd){
     
     Conn* conn = new Conn();
     conn->fd = connfd;
-    conn-> want_read = true;
+    conn->want_read = true;
+    conn->want_write=false;
+    conn->want_close=false;
 
     return conn;
 }
@@ -214,7 +216,14 @@ static bool try_one_request(Conn *conn){
     }else if (command == "PING"){
         
     }else if (command == "DEL"){
-        
+        if(kv.count(args)){
+            kv.erase(args);
+            payload = "OK";
+        }else{
+            payload = "KO:notfound";
+        }
+    } else {
+        payload = "KO:commandnotfound";
     }
 
     
